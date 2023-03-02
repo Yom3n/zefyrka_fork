@@ -5,6 +5,11 @@ import 'package:notus_format/notus_format.dart';
 import 'package:notus_format/packages/quill_format/lib/quill_format.dart';
 import 'package:zefyrka/util.dart';
 
+const TextSelection _kZeroSelection = TextSelection.collapsed(
+  offset: 0,
+  affinity: TextAffinity.upstream,
+);
+
 /// List of style keys which can be toggled for insertion
 List<String> _insertionToggleableStyleKeys = [
   NotusAttribute.bold.key,
@@ -23,7 +28,7 @@ class ZefyrController extends ChangeNotifier {
         _selection = TextSelection.collapsed(offset: 0);
 
   /// Document managed by this controller.
-  final NotusDocument document;
+  NotusDocument document;
 
   /// Currently selected text within the [document].
   TextSelection get selection => _selection;
@@ -47,6 +52,13 @@ class ZefyrController extends ChangeNotifier {
     lineStyle = lineStyle.mergeAll(toggledStyles);
 
     return lineStyle;
+  }
+
+  void clear() {
+    document = NotusDocument();
+    _toggledStyles = NotusStyle();
+    _selection = _kZeroSelection;
+    notifyListeners();
   }
 
   /// Replaces [length] characters in the document starting at [index] with
