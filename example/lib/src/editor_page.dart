@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:zefyrka/zefyrka.dart';
+import 'package:quill_format/quill_format.dart';
 
 class EditorPage extends StatefulWidget {
   @override
