@@ -11,12 +11,8 @@ dependencies:
     sdk: flutter
   collection: ^1.16.0
   url_launcher: ^6.1.2
-#  quill_format: # ^1.0.2
-  notus_format: # ^1.0.3
-    git:
-      url: https://github.com/Yom3n/notus_format_fork
-      ref: html
-
+  quill_format: ^1.0.2
+  notus_format: ^1.0.3
   characters: ^1.2.0
 
 dev_dependencies:

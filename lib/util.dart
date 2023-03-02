@@ -3,7 +3,8 @@ library zefyr.util;
 
 import 'dart:math' as math;
 
-import 'package:notus_format/packages/quill_format/lib/quill_format.dart';
+import 'package:quill_format/quill_format.dart';
+
 
 export 'src/fast_diff.dart';
 

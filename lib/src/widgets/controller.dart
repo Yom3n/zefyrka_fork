@@ -2,7 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
 import 'package:notus_format/notus_format.dart';
-import 'package:notus_format/packages/quill_format/lib/quill_format.dart';
+import 'package:quill_format/quill_format.dart';
 import 'package:zefyrka/util.dart';
 
 const TextSelection _kZeroSelection = TextSelection.collapsed(
