@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:quill_format/quill_format.dart';
 import 'package:zefyrka/zefyrka.dart';
 
 class EditorPage extends StatefulWidget {

@@ -1316,11 +1316,11 @@ class RawEditorState extends EditorState
     // TODO: implement removeTextPlaceholder
   }
 
-  @override
-  void didChangeInputControl(
-      TextInputControl? oldControl, TextInputControl? newControl) {
-    // TODO: implement didChangeInputControl
-  }
+  // @override
+  // void didChangeInputControl(
+  //     TextInputControl? oldControl, TextInputControl? newControl) {
+  //   // TODO: implement didChangeInputControl
+  // }
 
   @override
   void performSelector(String selectorName) {
