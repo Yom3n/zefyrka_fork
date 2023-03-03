@@ -509,6 +509,7 @@ class _ZefyrToolbarState extends State<ZefyrToolbar> {
       padding: EdgeInsets.symmetric(horizontal: 8),
       constraints: BoxConstraints.tightFor(height: widget.preferredSize.height),
       child: SingleChildScrollView(
+        physics: BouncingScrollPhysics(),
         scrollDirection: Axis.horizontal,
         child: Row(
           children: widget.children,
