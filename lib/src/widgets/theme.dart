@@ -106,12 +106,16 @@ class ZefyrThemeData {
     required this.code,
   });
 
-  factory ZefyrThemeData.fallback(BuildContext context) {
+  factory ZefyrThemeData.fallback(
+    BuildContext context, {
+    Color? fontColor,
+  }) {
     final themeData = Theme.of(context);
     final defaultStyle = DefaultTextStyle.of(context);
     final baseStyle = defaultStyle.style.copyWith(
       fontSize: 16.0,
       height: 1.3,
+      color: fontColor,
     );
     final baseSpacing = VerticalSpacing(top: 6.0, bottom: 10);
 
@@ -130,11 +134,11 @@ class ZefyrThemeData {
     }
 
     return ZefyrThemeData(
-      bold: TextStyle(fontWeight: FontWeight.bold),
-      italic: TextStyle(fontStyle: FontStyle.italic),
-      underline: TextStyle(decoration: TextDecoration.underline),
-      strikethrough: TextStyle(decoration: TextDecoration.lineThrough),
-      link: TextStyle(
+      bold: baseStyle.copyWith(fontWeight: FontWeight.bold),
+      italic: baseStyle.copyWith(fontStyle: FontStyle.italic),
+      underline: baseStyle.copyWith(decoration: TextDecoration.underline),
+      strikethrough: baseStyle.copyWith(decoration: TextDecoration.lineThrough),
+      link: baseStyle.copyWith(
         color: Colors.blue,
         decoration: TextDecoration.underline,
       ),
@@ -153,7 +157,7 @@ class ZefyrThemeData {
         spacing: VerticalSpacing(top: 16.0, bottom: 0.0),
       ),
       heading2: TextBlockTheme(
-        style: TextStyle(
+        style: baseStyle.copyWith(
           fontSize: 24.0,
           color: defaultStyle.style.color!.withOpacity(0.70),
           height: 1.15,
@@ -162,7 +166,7 @@ class ZefyrThemeData {
         spacing: VerticalSpacing(bottom: 0.0, top: 8.0),
       ),
       heading3: TextBlockTheme(
-        style: TextStyle(
+        style: baseStyle.copyWith(
           fontSize: 20.0,
           color: defaultStyle.style.color!.withOpacity(0.70),
           height: 1.25,
@@ -186,7 +190,7 @@ class ZefyrThemeData {
         ),
       ),
       code: TextBlockTheme(
-        style: TextStyle(
+        style: baseStyle.copyWith(
           color: Colors.blue.shade900.withOpacity(0.9),
           fontFamily: fontFamily,
           fontSize: 13.0,
