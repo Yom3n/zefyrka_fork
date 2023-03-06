@@ -135,7 +135,7 @@ class ZefyrThemeData {
       underline: TextStyle(decoration: TextDecoration.underline),
       strikethrough: TextStyle(decoration: TextDecoration.lineThrough),
       link: TextStyle(
-        color: themeData.colorScheme.secondary,
+        color: Colors.blue,
         decoration: TextDecoration.underline,
       ),
       paragraph: TextBlockTheme(
