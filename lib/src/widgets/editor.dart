@@ -1335,6 +1335,11 @@ class RawEditorState extends EditorState
   void performSelector(String selectorName) {
     // TODO: implement performSelector
   }
+
+  @override
+  void didChangeInputControl(TextInputControl? oldControl, TextInputControl? newControl) {
+    // TODO: implement didChangeInputControl
+  }
 }
 
 class _Editor extends MultiChildRenderObjectWidget {
