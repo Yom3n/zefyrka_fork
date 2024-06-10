@@ -1337,6 +1337,12 @@ class RawEditorState extends EditorState
 
   @override
   bool get shareEnabled => true;
+
+  @override
+  void didChangeInputControl(
+      TextInputControl? oldControl, TextInputControl? newControl) {
+    // TODO: implement didChangeInputControl
+  }
 }
 
 class _Editor extends MultiChildRenderObjectWidget {

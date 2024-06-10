@@ -16,13 +16,13 @@ void main() {
     testWidgets('autofocus', (tester) async {
       final editor = EditorSandBox(tester: tester, autofocus: true);
       await editor.pump();
-      expect(editor.focusNode.hasFocus, isTrue);
+      expect(editor.focusNode.hasFocus, true);
     });
 
     testWidgets('no autofocus', (tester) async {
       final editor = EditorSandBox(tester: tester);
       await editor.pump();
-      expect(editor.focusNode.hasFocus, isFalse);
+      expect(editor.focusNode.hasFocus, false);
     });
   });
 }
