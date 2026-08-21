@@ -186,6 +186,17 @@ class ZefyrEditor extends StatefulWidget {
   /// Callback to invoke when user wants to launch a URL.
   final ValueChanged<Uri>? onLaunchUrl;
 
+  /// Called when content is inserted through a virtual keyboard.
+  ///
+  /// This is currently supported on Android. The editor registers keyboard
+  /// content MIME types only when this callback is supplied.
+  final ValueChanged<KeyboardInsertedContent>? onContentInserted;
+
+  /// MIME types accepted from a virtual keyboard.
+  ///
+  /// This must not be empty when [onContentInserted] is supplied.
+  final List<String> contentInsertionAllowedMimeTypes;
+
   /// Builder function for embeddable objects.
   ///
   /// Defaults to [defaultZefyrEmbedBuilder].
@@ -213,6 +224,8 @@ class ZefyrEditor extends StatefulWidget {
     this.scrollPhysics,
     this.showSelectionHandles,
     this.onLaunchUrl,
+    this.onContentInserted,
+    this.contentInsertionAllowedMimeTypes = const <String>[],
     this.embedBuilder = defaultZefyrEmbedBuilder,
   }) : super(key: key);
 
@@ -227,9 +240,8 @@ class _ZefyrEditorState extends State<ZefyrEditor>
   @override
   GlobalKey<EditorState> get editableTextKey => _editorKey;
 
-  // TODO: Add support for forcePress on iOS.
   @override
-  bool get forcePressEnabled => false;
+  bool get forcePressEnabled => defaultTargetPlatform == TargetPlatform.iOS;
 
   @override
   bool get selectionEnabled => widget.enableInteractiveSelection;
@@ -319,6 +331,8 @@ class _ZefyrEditorState extends State<ZefyrEditor>
       keyboardAppearance: widget.keyboardAppearance,
       scrollPhysics: widget.scrollPhysics,
       onLaunchUrl: widget.onLaunchUrl,
+      onContentInserted: widget.onContentInserted,
+      contentInsertionAllowedMimeTypes: widget.contentInsertionAllowedMimeTypes,
       embedBuilder: widget.embedBuilder,
       // encapsulated fields below
       cursorStyle: CursorStyle(
@@ -403,8 +417,7 @@ class _ZefyrEditorSelectionGestureDetectorBuilder
         final url = Uri.parse(segment.style.get(NotusAttribute.link)!.value!);
         editor.widget.onLaunchUrl!(url);
       } else {
-        // TODO: Implement a toolbar to display the URL and allow to launch it.
-        // editor.showToolbar();
+        // In edit mode, a tap selects the link text instead of launching it.
       }
     }
   }
@@ -413,7 +426,6 @@ class _ZefyrEditorSelectionGestureDetectorBuilder
   void onSingleTapUp(TapUpDetails details) {
     editor.hideToolbar();
 
-    // TODO: Explore if we can forward tap up events to the TextSpan gesture detector
     _launchUrlIfNeeded(details);
 
     if (delegate.selectionEnabled) {
@@ -492,6 +504,8 @@ class RawEditor extends StatefulWidget {
     this.textCapitalization = TextCapitalization.none,
     this.keyboardAppearance = Brightness.light,
     this.onLaunchUrl,
+    this.onContentInserted,
+    this.contentInsertionAllowedMimeTypes = const <String>[],
     required this.selectionColor,
     this.scrollPhysics,
     this.toolbarOptions = const ToolbarOptions(
@@ -509,6 +523,10 @@ class RawEditor extends StatefulWidget {
         assert(maxHeight == null || maxHeight > 0),
         assert(minHeight == null || minHeight >= 0),
         assert(scrollAreaMinHeight == null || scrollAreaMinHeight >= 0),
+        assert(
+          onContentInserted == null ||
+              contentInsertionAllowedMimeTypes.isNotEmpty,
+        ),
         assert(
           (maxHeight == null) ||
               (minHeight == null) ||
@@ -547,6 +565,12 @@ class RawEditor extends StatefulWidget {
   /// Callback which is triggered when the user wants to open a URL from
   /// a link in the document.
   final ValueChanged<Uri>? onLaunchUrl;
+
+  /// Called when content is inserted through a virtual keyboard.
+  final ValueChanged<KeyboardInsertedContent>? onContentInserted;
+
+  /// MIME types accepted from a virtual keyboard.
+  final List<String> contentInsertionAllowedMimeTypes;
 
   /// Configuration of toolbar options.
   ///
@@ -824,8 +848,7 @@ class RawEditorState extends EditorState
       showCursor: ValueNotifier<bool>(widget.showCursor),
       style: widget.cursorStyle ??
           CursorStyle(
-            // TODO: fallback to current theme's accent color
-            color: Colors.blueAccent,
+            color: Theme.of(context).colorScheme.primary,
             backgroundColor: Colors.grey,
             width: 2.0,
           ),
@@ -993,10 +1016,6 @@ class RawEditorState extends EditorState
 //      }
     } else {
       WidgetsBinding.instance.removeObserver(this);
-      // TODO: teach editor about state of the toolbar and whether the user is in the middle of applying styles.
-      //       this is needed because some buttons in toolbar can steal focus from the editor
-      //       but we want to preserve the selection, maybe adjusting its style slightly.
-      //
       // Clear the selection and composition state if this widget lost focus.
       // widget.controller.updateSelection(TextSelection.collapsed(offset: 0),
       //     source: ChangeSource.local);
@@ -1308,22 +1327,27 @@ class RawEditorState extends EditorState
 
   @override
   void insertTextPlaceholder(Size size) {
-    // TODO: implement insertTextPlaceholder
+    // Zefyr does not enable stylus handwriting, so no placeholder is needed.
   }
 
   @override
   void removeTextPlaceholder() {
-    // TODO: implement removeTextPlaceholder
+    // Zefyr does not enable stylus handwriting, so no placeholder is needed.
   }
 
   @override
   void performSelector(String selectorName) {
-    // TODO: implement performSelector
+    final intent = intentForMacOSSelector(selectorName);
+    final context = FocusManager.instance.primaryFocus?.context;
+    if (intent != null && context != null) {
+      Actions.invoke(context, intent);
+    }
   }
 
   @override
   void insertContent(KeyboardInsertedContent content) {
-    // TODO: implement insertContent
+    assert(widget.contentInsertionAllowedMimeTypes.contains(content.mimeType));
+    widget.onContentInserted?.call(content);
   }
 
   @override
@@ -1341,7 +1365,19 @@ class RawEditorState extends EditorState
   @override
   void didChangeInputControl(
       TextInputControl? oldControl, TextInputControl? newControl) {
-    // TODO: implement didChangeInputControl
+    if (_hasFocus && hasConnection) {
+      oldControl?.hide();
+      newControl?.show();
+    }
+  }
+
+  @override
+  bool onFocusReceived() {
+    if (mounted && !_hasFocus && widget.focusNode.canRequestFocus) {
+      widget.focusNode.requestFocus();
+      return true;
+    }
+    return false;
   }
 }
 
@@ -1399,7 +1435,11 @@ class _Editor extends MultiChildRenderObjectWidget {
   @override
   void debugFillProperties(DiagnosticPropertiesBuilder properties) {
     super.debugFillProperties(properties);
-    // TODO
-//    properties.add(EnumProperty<Axis>('direction', direction));
+    properties.add(DiagnosticsProperty<NotusDocument>('document', document));
+    properties.add(EnumProperty<TextDirection>('textDirection', textDirection));
+    properties
+        .add(FlagProperty('hasFocus', value: hasFocus, ifTrue: 'has focus'));
+    properties.add(DiagnosticsProperty<TextSelection>('selection', selection));
+    properties.add(DiagnosticsProperty<EdgeInsetsGeometry>('padding', padding));
   }
 }

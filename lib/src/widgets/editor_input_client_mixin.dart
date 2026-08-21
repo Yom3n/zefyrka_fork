@@ -64,6 +64,9 @@ mixin RawEditorStateTextInputClientMixin on EditorState
           inputAction: TextInputAction.newline,
           keyboardAppearance: widget.keyboardAppearance,
           textCapitalization: widget.textCapitalization,
+          allowedMimeTypes: widget.onContentInserted == null
+              ? const <String>[]
+              : widget.contentInsertionAllowedMimeTypes,
         ),
       );
 
