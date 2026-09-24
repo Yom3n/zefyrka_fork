@@ -72,6 +72,31 @@ void main() {
       // expect(controller.lastChangeSource, ChangeSource.local);
     });
 
+    group('replaceText without selection', () {
+      setUp(() {
+        controller.replaceText(0, 0, 'Hello world',
+            selection: TextSelection.collapsed(offset: 8));
+      });
+
+      test('keeps selection within document when text is cleared', () {
+        controller.replaceText(0, controller.document.length - 1, '');
+        expect(controller.selection.baseOffset, 0);
+        expect(controller.selection.extentOffset, 0);
+      });
+
+      test('shifts selection after text inserted before it', () {
+        controller.replaceText(0, 0, 'Oh, ');
+        expect(controller.selection.baseOffset, 12);
+        expect(controller.selection.extentOffset, 12);
+      });
+
+      test('keeps selection before text inserted after it', () {
+        controller.replaceText(11, 0, '!');
+        expect(controller.selection.baseOffset, 8);
+        expect(controller.selection.extentOffset, 8);
+      });
+    });
+
     group('replaceText touching the last line break', () {
       setUp(() {
         controller.replaceText(0, 0, 'abc');

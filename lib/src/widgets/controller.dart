@@ -143,6 +143,16 @@ class ZefyrController extends ChangeNotifier {
           source: ChangeSource.local,
         );
       }
+    } else if (delta != null) {
+      // Transform current selection against the change, same as [compose],
+      // so that it does not point outside of the modified document.
+      final base = delta.transformPosition(_selection.baseOffset, force: false);
+      final extent =
+          delta.transformPosition(_selection.extentOffset, force: false);
+      _updateSelectionSilent(
+        _selection.copyWith(baseOffset: base, extentOffset: extent),
+        source: ChangeSource.local,
+      );
     }
 //    _lastChangeSource = ChangeSource.local;
     notifyListeners();
