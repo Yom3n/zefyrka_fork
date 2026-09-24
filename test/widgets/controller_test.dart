@@ -107,6 +107,16 @@ void main() {
         expect(controller.document.toDelta(), Delta()..insert('abx\n'));
       });
 
+      test('deletes past the end of the document', () {
+        controller.replaceText(4, 1, '');
+        expect(controller.document.toDelta(), Delta()..insert('abc\n'));
+      });
+
+      test('deletes text running past the end of the document', () {
+        controller.replaceText(2, 5, '');
+        expect(controller.document.toDelta(), Delta()..insert('ab\n'));
+      });
+
       test('deletes the last line break', () {
         controller.replaceText(3, 1, '');
         expect(controller.document.toDelta(), Delta()..insert('abc\n'));
