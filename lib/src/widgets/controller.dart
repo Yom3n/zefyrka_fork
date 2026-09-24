@@ -24,11 +24,20 @@ List<String> _insertionToggleableStyleKeys = [
 
 class ZefyrController extends ChangeNotifier {
   ZefyrController([NotusDocument? document])
-      : document = document ?? NotusDocument(),
+      : _document = document ?? NotusDocument(),
         _selection = TextSelection.collapsed(offset: 0);
 
   /// Document managed by this controller.
-  NotusDocument document;
+  ///
+  /// Setting a new document keeps the current [selection] within its bounds
+  /// but does not notify listeners.
+  NotusDocument get document => _document;
+  NotusDocument _document;
+
+  set document(NotusDocument value) {
+    _document = value;
+    _ensureSelectionBeforeLastBreak();
+  }
 
   /// Currently selected text within the [document].
   TextSelection get selection => _selection;
@@ -45,8 +54,11 @@ class ZefyrController extends ChangeNotifier {
   /// If nothing is selected but we've toggled an attribute,
   /// we also merge those in our style before returning.
   NotusStyle getSelectionStyle() {
-    final start = _selection.start;
-    final length = _selection.end - start;
+    // The document may have been modified directly, leaving the selection
+    // outside of its bounds.
+    final end = document.length - 1;
+    final start = _selection.start.clamp(0, end);
+    final length = _selection.end.clamp(start, end) - start;
     var lineStyle = document.collectStyle(start, length);
 
     lineStyle = lineStyle.mergeAll(toggledStyles);

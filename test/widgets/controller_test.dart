@@ -204,6 +204,31 @@ void main() {
       expect(result.values, [NotusAttribute.bold]);
     });
 
+    group('stale selection', () {
+      setUp(() {
+        controller.replaceText(0, 0, 'Hello world',
+            selection: TextSelection.collapsed(offset: 10));
+      });
+
+      test('is clamped when document is replaced', () {
+        controller.document = NotusDocument();
+        expect(controller.selection, TextSelection.collapsed(offset: 0));
+        expect(controller.getSelectionStyle(), NotusStyle());
+      });
+
+      test('getSelectionStyle when document is modified directly', () {
+        controller.document.delete(0, 8);
+        expect(controller.getSelectionStyle(), NotusStyle());
+      });
+
+      test('getSelectionStyle keeps block style of the last line', () {
+        controller.document.format(0, 0, NotusAttribute.ul);
+        controller.document.delete(0, 8);
+        expect(controller.getSelectionStyle(),
+            NotusStyle().put(NotusAttribute.ul));
+      });
+    });
+
     test('getSelectionStyle with toggled style', () {
       var selection = TextSelection.collapsed(offset: 3);
       controller.replaceText(0, 0, 'Words', selection: selection);
