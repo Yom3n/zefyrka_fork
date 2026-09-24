@@ -72,6 +72,47 @@ void main() {
       // expect(controller.lastChangeSource, ChangeSource.local);
     });
 
+    group('replaceText touching the last line break', () {
+      setUp(() {
+        controller.replaceText(0, 0, 'abc');
+      });
+
+      test('inserts after the last line break', () {
+        controller.replaceText(4, 0, 'x',
+            selection: TextSelection.collapsed(offset: 5));
+        expect(controller.document.toDelta(), Delta()..insert('abcx\n'));
+        expect(controller.selection, TextSelection.collapsed(offset: 4));
+      });
+
+      test('inserts past the end of the document', () {
+        controller.replaceText(10, 0, 'x');
+        expect(controller.document.toDelta(), Delta()..insert('abcx\n'));
+      });
+
+      test('replaces all text including the last line break', () {
+        controller.replaceText(0, 4, 'x',
+            selection: TextSelection.collapsed(offset: 1));
+        expect(controller.document.toDelta(), Delta()..insert('x\n'));
+        expect(controller.selection, TextSelection.collapsed(offset: 1));
+      });
+
+      test('replaces the last line break', () {
+        controller.replaceText(3, 1, 'x');
+        expect(controller.document.toDelta(), Delta()..insert('abcx\n'));
+      });
+
+      test('replaces the last line break with text ending with a line break',
+          () {
+        controller.replaceText(2, 2, 'x\n');
+        expect(controller.document.toDelta(), Delta()..insert('abx\n'));
+      });
+
+      test('deletes the last line break', () {
+        controller.replaceText(3, 1, '');
+        expect(controller.document.toDelta(), Delta()..insert('abc\n'));
+      });
+    });
+
     test('formatText', () {
       var notified = false;
       controller.addListener(() {
@@ -82,7 +123,9 @@ void main() {
       expect(notified, true);
       expect(
         controller.document.toDelta(),
-        Delta()..insert('Words', NotusAttribute.bold.toJson())..insert('\n'),
+        Delta()
+          ..insert('Words', NotusAttribute.bold.toJson())
+          ..insert('\n'),
       );
       // expect(controller.lastChangeSource, ChangeSource.local);
     });
@@ -103,7 +146,11 @@ void main() {
 
       expect(
         controller.document.toDelta(),
-        Delta()..insert('Won')..insert('B', NotusAttribute.bold.toJson())..insert('rds')..insert('\n'),
+        Delta()
+          ..insert('Won')
+          ..insert('B', NotusAttribute.bold.toJson())
+          ..insert('rds')
+          ..insert('\n'),
       );
       // expect(controller.lastChangeSource, ChangeSource.local);
     });
@@ -122,7 +169,11 @@ void main() {
       expect(notified, true);
       expect(
         controller.document.toDelta(),
-        Delta()..insert('W')..insert('B', NotusAttribute.bold.toJson())..insert('uords')..insert('\n'),
+        Delta()
+          ..insert('W')
+          ..insert('B', NotusAttribute.bold.toJson())
+          ..insert('uords')
+          ..insert('\n'),
       );
       // expect(controller.lastChangeSource, ChangeSource.local);
     });
@@ -138,7 +189,9 @@ void main() {
       expect(notified, true);
       expect(
         controller.document.toDelta(),
-        Delta()..insert('Words', NotusAttribute.bold.toJson())..insert('\n'),
+        Delta()
+          ..insert('Words', NotusAttribute.bold.toJson())
+          ..insert('\n'),
       );
       // expect(controller.lastChangeSource, ChangeSource.local);
     });
@@ -160,7 +213,8 @@ void main() {
       expect(result.values, [NotusAttribute.bold]);
     });
 
-    test('preserve inline format when replacing text from the first character', () {
+    test('preserve inline format when replacing text from the first character',
+        () {
       var notified = false;
       controller.addListener(() {
         notified = true;
@@ -170,7 +224,9 @@ void main() {
       expect(notified, true);
       expect(
         controller.document.toDelta(),
-        Delta()..insert('Word', NotusAttribute.bold.toJson())..insert('\n'),
+        Delta()
+          ..insert('Word', NotusAttribute.bold.toJson())
+          ..insert('\n'),
       );
       // expect(controller.lastChangeSource, ChangeSource.local);
     });

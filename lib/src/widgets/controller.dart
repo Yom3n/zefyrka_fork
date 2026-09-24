@@ -76,6 +76,22 @@ class ZefyrController extends ChangeNotifier {
     assert(data is String || data is EmbeddableObject);
     Delta? delta;
 
+    // The last line break of the document can not be modified, see
+    // [_ensureSelectionBeforeLastBreak]. The platform text input is not aware
+    // of it and may send edits which include it, e.g. when all text selected
+    // by the keyboard is replaced.
+    final end = document.length - 1;
+    if (index > end) {
+      index = end;
+      length = 0;
+    } else if (index + length > end) {
+      length = end - index;
+      // The replaced text already ended with the preserved line break.
+      if (data is String && data.endsWith('\n')) {
+        data = data.substring(0, data.length - 1);
+      }
+    }
+
     final isDataNotEmpty = data is String ? data.isNotEmpty : true;
     if (length > 0 || isDataNotEmpty) {
       delta = document.replace(index, length, data!);
