@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -220,115 +222,152 @@ class CursorController extends ChangeNotifier {
   }
 }
 
+/// Handles floating cursor gestures (e.g. long-pressing the space bar on the
+/// iOS keyboard to use it as a trackpad).
+///
+/// Ported from [EditableTextState.updateFloatingCursor] and
+/// [RenderEditable.calculateBoundedFloatingCursorOffset]. Unlike Flutter's
+/// implementation, a separate floating cursor is not painted. Instead the
+/// regular caret is moved as the gesture progresses.
 class FloatingCursorController {
-  FloatingCursorController({
-    required TickerProvider tickerProvider,
-  }) {
-    _floatingCursorResetController = AnimationController(vsync: tickerProvider);
-    _floatingCursorResetController.addListener(_onFloatingCursorResetTick);
-  }
+  // The center of the caret on FloatingCursorDragState.start, in
+  // [RenderEditor]'s local coordinates.
+  Offset? _startCaretCenter;
 
-  // The time it takes for the floating cursor to snap to the text aligned
-  // cursor position after the user has finished placing it.
-  static const Duration _floatingCursorResetTime = Duration(milliseconds: 125);
-
-  late AnimationController _floatingCursorResetController;
-
-  // The original position of the caret on FloatingCursorDragState.start.
-  Rect? _startCaretRect;
-
-  // The most recent text position as determined by the location of the floating
-  // cursor.
-  TextPosition? _lastTextPosition;
-
-  // The offset of the floating cursor as determined from the first update call.
+  // The offset of the floating cursor as reported on
+  // FloatingCursorDragState.start. Points reported afterwards are relative to
+  // this origin.
   Offset? _pointOffsetOrigin;
 
-  // The most recent position of the floating cursor.
-  Offset? _lastBoundedOffset;
+  // The relative origin in relation to the distance the user has theoretically
+  // dragged the floating cursor outside of the editor. This value is used to
+  // account for the difference between the bounded and the raw offset value.
+  Offset _relativeOrigin = Offset.zero;
+  Offset? _previousOffset;
+  bool _resetOriginOnLeft = false;
+  bool _resetOriginOnRight = false;
+  bool _resetOriginOnTop = false;
+  bool _resetOriginOnBottom = false;
 
-  // Because the center of the cursor is preferredLineHeight / 2 below the touch
-  // origin, but the touch origin is used to determine which line the cursor is
-  // on, we need this offset to correctly render and move the cursor.
-//  Offset get _floatingCursorOffset =>
-//      Offset(0, renderEditor.preferredLineHeight / 2);
-
-  void updateFloatingCursor(
+  /// Processes a floating cursor [point] reported by the platform.
+  ///
+  /// Returns the text position the caret should be moved to, or `null` if the
+  /// caret should stay where it is.
+  TextPosition? updateFloatingCursor(
       RawFloatingCursorPoint point, RenderEditor renderEditor) {
-//    switch (point.state) {
-//      case FloatingCursorDragState.Start:
-//        if (_floatingCursorResetController.isAnimating) {
-//          _floatingCursorResetController.stop();
-//          _onFloatingCursorResetTick();
-//        }
-//        final TextPosition currentTextPosition =
-//            TextPosition(offset: renderEditor.selection.baseOffset);
-//        _startCaretRect =
-//            renderEditor.getLocalRectForCaret(currentTextPosition);
-//        renderEditor.setFloatingCursor(
-//            point.state,
-//            _startCaretRect.center - _floatingCursorOffset,
-//            currentTextPosition);
-//        break;
-//      case FloatingCursorDragState.Update:
-//        // We want to send in points that are centered around a (0,0) origin, so we cache the
-//        // position on the first update call.
-//        if (_pointOffsetOrigin != null) {
-//          final Offset centeredPoint = point.offset - _pointOffsetOrigin;
-//          final Offset rawCursorOffset =
-//              _startCaretRect.center + centeredPoint - _floatingCursorOffset;
-//          _lastBoundedOffset = renderEditor
-//              .calculateBoundedFloatingCursorOffset(rawCursorOffset);
-//          _lastTextPosition = renderEditor.getPositionForPoint(renderEditor
-//              .localToGlobal(_lastBoundedOffset + _floatingCursorOffset));
-//          renderEditor.setFloatingCursor(
-//              point.state, _lastBoundedOffset, _lastTextPosition);
-//        } else {
-//          _pointOffsetOrigin = point.offset;
-//        }
-//        break;
-//      case FloatingCursorDragState.End:
-//        // We skip animation if no update has happened.
-//        if (_lastTextPosition != null && _lastBoundedOffset != null) {
-//          _floatingCursorResetController.value = 0.0;
-//          _floatingCursorResetController.animateTo(1.0,
-//              duration: _floatingCursorResetTime, curve: Curves.decelerate);
-//        }
-//        break;
-//    }
+    switch (point.state) {
+      case FloatingCursorDragState.Start:
+        _reset();
+        _pointOffsetOrigin = point.offset;
+        final selection = renderEditor.selection;
+        if (!selection.isValid) {
+          _reset();
+          return null;
+        }
+        final caretBottom = renderEditor
+            .getEndpointsForSelection(TextSelection.collapsed(
+              offset: selection.baseOffset,
+              affinity: selection.affinity,
+            ))
+            .first
+            .point;
+        final lineHeight = renderEditor
+            .preferredLineHeight(TextPosition(offset: selection.baseOffset));
+        _startCaretCenter = caretBottom - Offset(0, lineHeight / 2);
+        return null;
+      case FloatingCursorDragState.Update:
+        final startCaretCenter = _startCaretCenter;
+        final pointOffsetOrigin = _pointOffsetOrigin;
+        final pointOffset = point.offset;
+        if (startCaretCenter == null ||
+            pointOffsetOrigin == null ||
+            pointOffset == null) {
+          return null;
+        }
+        final rawCursorOffset =
+            startCaretCenter + pointOffset - pointOffsetOrigin;
+        final boundedOffset =
+            _calculateBoundedOffset(rawCursorOffset, renderEditor);
+        return renderEditor
+            .getPositionForOffset(renderEditor.localToGlobal(boundedOffset));
+      case FloatingCursorDragState.End:
+        _reset();
+        return null;
+    }
   }
 
-  void dispose() {
-    _floatingCursorResetController.removeListener(_onFloatingCursorResetTick);
+  void _reset() {
+    _startCaretCenter = null;
+    _pointOffsetOrigin = null;
+    _relativeOrigin = Offset.zero;
+    _previousOffset = null;
+    _resetOriginOnLeft = false;
+    _resetOriginOnRight = false;
+    _resetOriginOnTop = false;
+    _resetOriginOnBottom = false;
   }
 
-  void _onFloatingCursorResetTick() {
-//    final Offset finalPosition =
-//        renderEditable.getLocalRectForCaret(_lastTextPosition).centerLeft -
-//            _floatingCursorOffset;
-//    if (_floatingCursorResetController.isCompleted) {
-//      renderEditable.setFloatingCursor(
-//          FloatingCursorDragState.End, finalPosition, _lastTextPosition);
-//      if (_lastTextPosition.offset != renderEditable.selection.baseOffset)
-//        // The cause is technically the force cursor, but the cause is listed as tap as the desired functionality is the same.
-//        _handleSelectionChanged(
-//            TextSelection.collapsed(offset: _lastTextPosition.offset),
-//            renderEditable,
-//            SelectionChangedCause.forcePress);
-//      _startCaretRect = null;
-//      _lastTextPosition = null;
-//      _pointOffsetOrigin = null;
-//      _lastBoundedOffset = null;
-//    } else {
-//      final double lerpValue = _floatingCursorResetController.value;
-//      final double lerpX =
-//          ui.lerpDouble(_lastBoundedOffset.dx, finalPosition.dx, lerpValue);
-//      final double lerpY =
-//          ui.lerpDouble(_lastBoundedOffset.dy, finalPosition.dy, lerpValue);
-//
-//      renderEditable.setFloatingCursor(FloatingCursorDragState.Update,
-//          Offset(lerpX, lerpY), _lastTextPosition,
-//          resetLerpValue: lerpValue);
-//    }
+  Offset _calculateBoundedOffset(
+      Offset rawCursorOffset, RenderEditor renderEditor) {
+    final bounds = Offset.zero & renderEditor.size;
+    // Keep the lookup point strictly inside the editor.
+    final boundingRect = Rect.fromLTRB(
+        bounds.left,
+        bounds.top,
+        math.max(bounds.left, bounds.right - 1),
+        math.max(bounds.top, bounds.bottom - 1));
+
+    var deltaPosition = Offset.zero;
+    if (_previousOffset != null) {
+      deltaPosition = rawCursorOffset - _previousOffset!;
+    }
+
+    // If the raw cursor offset has gone off an edge, we want to reset the
+    // relative origin of the dragging when the user drags back into the editor.
+    if (_resetOriginOnLeft && deltaPosition.dx > 0) {
+      _relativeOrigin =
+          Offset(rawCursorOffset.dx - boundingRect.left, _relativeOrigin.dy);
+      _resetOriginOnLeft = false;
+    } else if (_resetOriginOnRight && deltaPosition.dx < 0) {
+      _relativeOrigin =
+          Offset(rawCursorOffset.dx - boundingRect.right, _relativeOrigin.dy);
+      _resetOriginOnRight = false;
+    }
+    if (_resetOriginOnTop && deltaPosition.dy > 0) {
+      _relativeOrigin =
+          Offset(_relativeOrigin.dx, rawCursorOffset.dy - boundingRect.top);
+      _resetOriginOnTop = false;
+    } else if (_resetOriginOnBottom && deltaPosition.dy < 0) {
+      _relativeOrigin =
+          Offset(_relativeOrigin.dx, rawCursorOffset.dy - boundingRect.bottom);
+      _resetOriginOnBottom = false;
+    }
+
+    final currentX = rawCursorOffset.dx - _relativeOrigin.dx;
+    final currentY = rawCursorOffset.dy - _relativeOrigin.dy;
+    final adjustedOffset =
+        _clampOffset(Offset(currentX, currentY), boundingRect);
+
+    if (currentX < boundingRect.left && deltaPosition.dx < 0) {
+      _resetOriginOnLeft = true;
+    } else if (currentX > boundingRect.right && deltaPosition.dx > 0) {
+      _resetOriginOnRight = true;
+    }
+    if (currentY < boundingRect.top && deltaPosition.dy < 0) {
+      _resetOriginOnTop = true;
+    } else if (currentY > boundingRect.bottom && deltaPosition.dy > 0) {
+      _resetOriginOnBottom = true;
+    }
+
+    _previousOffset = rawCursorOffset;
+
+    return adjustedOffset;
+  }
+
+  static Offset _clampOffset(Offset offset, Rect bounds) {
+    return Offset(
+      clampDouble(offset.dx, bounds.left, bounds.right),
+      clampDouble(offset.dy, bounds.top, bounds.bottom),
+    );
   }
 }

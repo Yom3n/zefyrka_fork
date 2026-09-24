@@ -202,13 +202,8 @@ mixin RawEditorStateTextInputClientMixin on EditorState
   }
 
   @override
-  void updateFloatingCursor(RawFloatingCursorPoint point) {
-    throw UnimplementedError();
-  }
-
-  @override
   void showAutocorrectionPromptRect(int start, int end) {
-    throw UnimplementedError();
+    // Autocorrection highlight is not supported.
   }
 
   @override

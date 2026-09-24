@@ -751,7 +751,8 @@ class RawEditorState extends EditorState
 
   // Cursors
   CursorController? _cursorController;
-  FloatingCursorController? _floatingCursorController;
+  final FloatingCursorController _floatingCursorController =
+      FloatingCursorController();
 
   // Keyboard
   late keyboard.KeyboardListener _keyboardListener;
@@ -1323,6 +1324,24 @@ class RawEditorState extends EditorState
     if (cause == SelectionChangedCause.toolbar) {
       bringIntoView(textEditingValue.selection.extent);
     }
+  }
+
+  @override
+  void updateFloatingCursor(RawFloatingCursorPoint point) {
+    final position =
+        _floatingCursorController.updateFloatingCursor(point, renderEditor);
+    // During a two-finger selection gesture the engine updates the selection
+    // itself, so only a collapsed caret is moved.
+    final selection = textEditingValue.selection;
+    if (position == null ||
+        !selection.isCollapsed ||
+        position.offset == selection.baseOffset) {
+      return;
+    }
+    // The cause is technically the floating cursor, but the desired
+    // behavior is the same as for a force press.
+    _handleSelectionChanged(
+        TextSelection.fromPosition(position), SelectionChangedCause.forcePress);
   }
 
   @override
