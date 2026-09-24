@@ -953,6 +953,8 @@ class RawEditorState extends EditorState
     _selectionOverlay = null;
     widget.controller.removeListener(_didChangeTextEditingValue);
     widget.focusNode.removeListener(_handleFocusChanged);
+    WidgetsBinding.instance.removeObserver(this);
+    _scrollController!.removeListener(_updateSelectionOverlayForScroll);
     _focusAttachment!.detach();
     _cursorController!.dispose();
     _clipboardStatus?.removeListener(_onChangedClipboardStatus);
@@ -980,8 +982,9 @@ class RawEditorState extends EditorState
     // a new RenderEditableBox child. If we try to update selection overlay
     // immediately it'll not be able to find the new child since it hasn't been
     // built yet.
-    SchedulerBinding.instance.addPostFrameCallback(
-        (Duration _) => _updateOrDisposeSelectionOverlayIfNeeded());
+    SchedulerBinding.instance.addPostFrameCallback((Duration _) {
+      if (mounted) _updateOrDisposeSelectionOverlayIfNeeded();
+    });
 //    _textChangedSinceLastCaretUpdate = true;
 
     setState(() {
@@ -1004,8 +1007,9 @@ class RawEditorState extends EditorState
     openOrCloseConnection();
     _cursorController!
         .startOrStopCursorTimerIfNeeded(_hasFocus, widget.controller.selection);
-    SchedulerBinding.instance.addPostFrameCallback(
-        (Duration _) => _updateOrDisposeSelectionOverlayIfNeeded());
+    SchedulerBinding.instance.addPostFrameCallback((Duration _) {
+      if (mounted) _updateOrDisposeSelectionOverlayIfNeeded();
+    });
     if (_hasFocus) {
       // Listen for changing viewInsets, which indicates keyboard showing up.
       WidgetsBinding.instance.addObserver(this);
@@ -1074,8 +1078,12 @@ class RawEditorState extends EditorState
     _showCaretOnScreenScheduled = true;
     SchedulerBinding.instance.addPostFrameCallback((Duration _) {
       _showCaretOnScreenScheduled = false;
+      // The editor may have been removed from the tree before this frame
+      // ended, and the scroll controller may not be attached to a scroll view.
+      if (!mounted || !_scrollController!.hasClients) return;
 
-      final viewport = RenderAbstractViewport.of(renderEditor);
+      final viewport = RenderAbstractViewport.maybeOf(renderEditor);
+      if (viewport == null) return;
       final editorOffset =
           renderEditor.localToGlobal(Offset(0.0, 0.0), ancestor: viewport);
       final offsetInViewport = _scrollController!.offset + editorOffset.dy;

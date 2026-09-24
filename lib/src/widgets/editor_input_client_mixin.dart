@@ -221,6 +221,9 @@ mixin RawEditorStateTextInputClientMixin on EditorState
       // Asking for renderEditor.size here can cause errors if layout hasn't
       // occurred yet. So we schedule a post frame callback instead.
       SchedulerBinding.instance.addPostFrameCallback((Duration _) {
+        // The editor may have been removed from the tree or the connection
+        // closed before this frame ended.
+        if (!mounted || !hasConnection) return;
         final size = renderEditor.size;
         final transform = renderEditor.getTransformTo(null);
         _textInputConnection!.setEditableSizeAndTransform(size, transform);
