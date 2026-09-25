@@ -74,5 +74,8 @@ mixin RawEditorStateSelectionDelegateMixin on EditorState
   bool get pasteEnabled => widget.toolbarOptions.paste && !widget.readOnly;
 
   @override
-  bool get selectAllEnabled => widget.toolbarOptions.selectAll;
+  // An empty document still contains its trailing newline, so only offer
+  // "Select all" when there is actual content.
+  bool get selectAllEnabled =>
+      widget.toolbarOptions.selectAll && textEditingValue.text.length > 1;
 }

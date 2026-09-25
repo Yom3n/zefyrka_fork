@@ -823,6 +823,9 @@ class RawEditorState extends EditorState
       return false;
     }
 
+    // The clipboard may have changed since the status was last checked, e.g.
+    // after copying text elsewhere in the app. Refresh it so "Paste" is shown.
+    _clipboardStatus?.update();
     _selectionOverlay!.showToolbar();
     return true;
   }
@@ -1295,6 +1298,7 @@ class RawEditorState extends EditorState
       return;
     }
     clipboardController.copy(widget.controller, plainText);
+    _clipboardStatus?.update();
     if (cause == SelectionChangedCause.toolbar) {
       bringIntoView(textEditingValue.selection.extent);
       hideToolbar();
@@ -1305,6 +1309,7 @@ class RawEditorState extends EditorState
   void cutSelection(SelectionChangedCause cause) {
     final plainText = textEditingValue.text;
     clipboardController.cut(widget.controller, plainText);
+    _clipboardStatus?.update();
     if (cause == SelectionChangedCause.toolbar) {
       bringIntoView(textEditingValue.selection.extent);
       hideToolbar();
