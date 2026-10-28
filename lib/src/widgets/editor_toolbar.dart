@@ -381,6 +381,88 @@ Widget _selectHeadingStyleButtonBuilder(BuildContext context,
   );
 }
 
+/// Toolbar button which cycles alignment of the selected lines through
+/// start, center, end and justify.
+class SelectAlignmentButton extends StatefulWidget {
+  final ZefyrController controller;
+
+  const SelectAlignmentButton({Key? key, required this.controller})
+      : super(key: key);
+
+  @override
+  _SelectAlignmentButtonState createState() => _SelectAlignmentButtonState();
+}
+
+class _SelectAlignmentButtonState extends State<SelectAlignmentButton> {
+  static final _alignmentsInCycleOrder = <NotusAttribute<String>>[
+    NotusAttribute.alignment.unset,
+    NotusAttribute.center,
+    NotusAttribute.end,
+    NotusAttribute.justify,
+  ];
+
+  static final _iconsByAlignment = <NotusAttribute<String>, IconData>{
+    NotusAttribute.alignment.unset: Icons.format_align_left,
+    NotusAttribute.center: Icons.format_align_center,
+    NotusAttribute.end: Icons.format_align_right,
+    NotusAttribute.justify: Icons.format_align_justify,
+  };
+
+  late NotusAttribute<String> _alignment;
+
+  NotusAttribute<String> get _selectionAlignment =>
+      widget.controller
+          .getSelectionStyle()
+          .get(NotusAttribute.alignment) ??
+      NotusAttribute.alignment.unset;
+
+  void _didChangeEditingValue() {
+    setState(() {
+      _alignment = _selectionAlignment;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _alignment = _selectionAlignment;
+    widget.controller.addListener(_didChangeEditingValue);
+  }
+
+  @override
+  void didUpdateWidget(covariant SelectAlignmentButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_didChangeEditingValue);
+      widget.controller.addListener(_didChangeEditingValue);
+      _alignment = _selectionAlignment;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_didChangeEditingValue);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return defaultToggleStyleButtonBuilder(
+      context,
+      _alignment,
+      _iconsByAlignment[_alignment]!,
+      !_alignment.isUnset,
+      _selectNextAlignment,
+    );
+  }
+
+  void _selectNextAlignment() {
+    final index = _alignmentsInCycleOrder.indexOf(_alignment);
+    final nextIndex = (index + 1) % _alignmentsInCycleOrder.length;
+    widget.controller.formatSelection(_alignmentsInCycleOrder[nextIndex]);
+  }
+}
+
 class ZefyrToolbar extends StatefulWidget implements PreferredSizeWidget {
   final List<Widget> children;
 
@@ -394,6 +476,7 @@ class ZefyrToolbar extends StatefulWidget implements PreferredSizeWidget {
       bool hideUnderLineButton = false,
       bool hideStrikeThrough = false,
       bool hideHeadingStyle = false,
+      bool hideAlignment = false,
       bool hideListNumbers = false,
       bool hideListBullets = false,
       bool hideCodeBlock = false,
@@ -443,6 +526,9 @@ class ZefyrToolbar extends StatefulWidget implements PreferredSizeWidget {
       Visibility(
           visible: !hideHeadingStyle,
           child: SelectHeadingStyleButton(controller: controller)),
+      Visibility(
+          visible: !hideAlignment,
+          child: SelectAlignmentButton(controller: controller)),
       VerticalDivider(indent: 16, endIndent: 16, color: Colors.grey.shade400),
       Visibility(
         visible: !hideListNumbers,
